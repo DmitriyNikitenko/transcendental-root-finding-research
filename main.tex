@@ -1,0 +1,1374 @@
+﻿\documentclass[12pt,a4paper]{article}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[russian]{babel}
+\usepackage{caption}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning}
+\usepackage[table]{xcolor}
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    escapeinside={(*@}{@*)}
+}
+\captionsetup{font=small}
+\geometry{left=2cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+\onehalfspacing
+
+\newtheoremstyle{bigplain}
+  {1em}
+  {1em}
+  {\normalfont\rightskip=0pt}
+  {}
+  {\bfseries\large}
+  {.}
+  {0.2em}
+  {\thmname{#1}\thmnote{(\textbf{#3})}}
+
+\theoremstyle{bigplain}
+\newtheorem*{theorem}{Теорема}
+
+\theoremstyle{plain}
+\newtheorem{definition}{Определение}
+\newtheorem{remark}{Замечание}
+
+
+
+
+
+
+
+
+
+
+\title{Численные методы решения\\ трансцендентного уравнения одного вида}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+%====================================================================
+\begin{abstract}
+Работа посвящена поиску решений неавтономной системы
+с релейным гистерезисом численными методами.
+Рассматривается трансцендентное уравнение,
+полученное в работе В.В. Евстафьевой при исследовании
+ двухточечно-колебательных
+решений системы.
+Проанализирована Теорема~1 указанной работы,
+в которой установлены  условия существования и единственности
+решения с заданным периодом возврата.
+Выполнен обзор и сравнительный анализ численных методов, применяемых для 
+поиска корней нелинейных уравнений и 
+реализованных в средах \textsc{Matlab} и \textsc{Julia}.
+Для модельной трехмерной системы найдено численное решение трансцендентного уравнения,
+определяющего момент первого переключения, и проведен сравнительный анализ с аналитическим решением.
+\end{abstract}
+
+\vspace{2\baselineskip}
+
+\noindent\textbf{Предварительные сведения: }
+Рассматривается система обыкновенных дифференциальных уравнений
+\begin{equation}
+\dot Y(t)=AY(t)+Bu(\sigma(t))+Kf(t),\qquad
+\sigma(t)=(C,Y(t)),
+\tag{1.1}
+\label{eq:system}
+\end{equation}
+где $Y(t)\in\mathbb{R}^n$ — вектор состояния, постоянная матрица $A$ имеет простые ненулевые вещественные собственные числа,
+векторы $B,C,K\in\mathbb{R}^n$ постоянны,
+$f(t)$ — непрерывная ограниченная функция возмущения .
+Нелинейность $u(\sigma)$ описывает двухпозиционное реле
+с положительным гистерезисом, порогами $\ell_1<\ell_2$
+и уровнями выхода $m_1<m_2$.\\
+
+%====================================================================
+\noindent\textbf{Приведем основные определения из работы } \cite{Eustafieva}
+\vspace{-0.5\baselineskip}
+%====================================================================
+
+
+
+\begin{definition}
+Точкой переключения называется состояние системы~(1.1), 
+при котором входная функция $\sigma(t)$ достигает одного из пороговых значений 
+$\ell_\mu$, $\mu=1,2$, а выходная функция $u(t)$ при этом меняет значение 
+выхода $m_1$ на $m_2$ или наоборот.
+\end{definition}
+
+\begin{definition}
+Гиперплоскостью переключения называется гиперплоскость
+\[
+L_\mu=\{Y\in\mathbb{R}^n:(C,Y)=\ell_\mu\},\qquad \mu=1,2.
+\]
+\end{definition}
+
+\begin{definition}
+Решение $Y(\cdot)$ системы~(1.1) называется
+$T_r$-двухточечно-колебательным простейшего поведения,
+если существуют вещественные положительные числа $\tau_1$ и $\tau_2$ такие, что
+$\tau_1+\tau_2=T_r$, и точки $Y^{1}\in L_1$ и $Y^{2}\in L_2$,
+для которых выполняются следующие условия:
+
+\begin{enumerate}[label=\textbf{\arabic*)}, leftmargin=*]
+\item
+$Y(t_0+\kappa T_r)=Y^{1}$
+\quad \text{и} \quad
+$Y(t_0+\tau_1+\kappa T_r)=Y^{2},$
+где $t_0\ge 0$ -- начальный момент времени,
+$\kappa\in\mathbb{N}\cup\{0\}$;
+
+\item
+для всех $\kappa\in\mathbb{N}\cup\{0\}$ на полуинтервалах
+$\Delta_\kappa^{1}=[t_0+\kappa T_r,\; t_0+\tau_1+\kappa T_r)$
+имеет место равенство $u=m_1$, а на полуинтервале
+$\Delta_\kappa^{2}=[t_0+\tau_1+\kappa T_r,\; t_0+(\kappa+1)T_r)$
+имеет место равенство $u=m_2$.
+\end{enumerate}
+\end{definition}   
+
+
+
+
+\noindent{Далее приведем вспомогательные сведения.}
+
+%====================================================================
+\subsection*{Формула Коши для неавтономной системы}
+%====================================================================
+
+Рассмотрим линейную систему
+\begin{equation}
+\dot Y(t)=AY(t)+Kf(t),
+\tag{1.2}
+\label{eq:linear}
+\end{equation}
+где $A$ — постоянная матрица, $f(t)$ — непрерывная функция.\\
+Пусть
+\[
+Y(t)=e^{At}Z(t).
+\]
+Тогда
+\[
+\dot Y(t)=\frac{d}{dt}\bigl(e^{At}Z(t)\bigr)
+= Ae^{At}Z(t)+e^{At}\dot Z(t).
+\]
+Из \eqref{eq:linear} получаем
+\[
+e^{At}\dot Z(t) = Kf(t) \implies \dot Z(t) = e^{-At}Kf(t).
+\]
+Интегрируя по времени от $t_0$ до $t$, имеем
+\[
+Z(t)-Z(t_0)=\int_{t_0}^{t} e^{-As}Kf(s)\,ds.
+\]
+Поскольку $Z(t_0)=e^{-At_0}Y(t_0)$, возвращаясь к $Y(t)$, получаем
+\[
+Y(t)
+=
+e^{A(t-t_0)}Y(t_0)
++
+\int_{t_0}^{t} e^{A(t-s)}Kf(s)\,ds.
+\]
+
+\noindentВ общем случае для системы
+\[
+\dot Y(t)=AY(t)+g(t),
+\]
+где $g(t)$ — разрывно-непрерывная вектор-функция, формула Коши принимает вид
+\begin{equation}
+Y(t)
+=
+e^{A(t-t_0)}Y(t_0)
++
+\int_{t_0}^{t} e^{A(t-s)}g(s)\,ds.
+\tag{1.3}
+\label{eq:Cauchy}
+\end{equation}
+
+\noindentВ системе \eqref{eq:system} роль внешнего воздействия играет функция
+\[
+g(t)=Bu(\sigma(t))+Kf(t).
+\]
+
+Формула \eqref{eq:Cauchy} является фундаментальным инструментом
+для описания движения системы между моментами переключения,
+когда значение $u(\sigma)$ постоянно и система становится линейной.
+
+
+%====================================================================
+\subsection*{Метод припасовывания. Вывод условий возврата}
+%====================================================================
+
+Рассматривается система
+\begin{equation*}
+\dot Y(t)=AY(t)+Bu(\sigma(t))+Kf(t),
+\qquad
+\sigma(t)=(C,Y(t)).
+\end{equation*}
+
+Пусть $Y^{1}\in L_1$, $Y^{2}\in L_2$ — точки переключения, $\tau_1$ - время перехода от $L_1$ до $L_2$ \\
+$t_0+\tau_1$ — момент первого переключения,
+$T_r=\tau_1+\tau_2$ — период возврата.
+
+%--------------------------------------------------------------------
+\paragraph{1. Движение на первом участке ($u=m_1$).}
+%--------------------------------------------------------------------
+
+При $t\in[t_0,t_0+\tau_1)$ имеем $u(t)=m_1$, поэтому система принимает вид
+\[
+\dot Y(t)=AY(t)+Bm_1+Kf(t).
+\]
+
+\noindentПо формуле Коши получаем
+\begin{equation*}
+Y(t)
+=
+e^{A(t-t_0)}Y^{1}
++
+\int_{t_0}^{t}
+e^{A(t-s)}(Bm_1+Kf(s))\,ds.
+\end{equation*}
+
+\noindentВ момент $t=t_0+\tau_1$ траектория достигает гиперплоскости $L_2$, поэтому
+\begin{equation}
+Y^{2}
+=
+e^{A\tau_1}Y^{1}
++
+\int_{t_0}^{t_0+\tau_1}
+e^{A(t_0+\tau_1-s)}
+\bigl(Bm_1+Kf(s)\bigr)\,ds.
+\tag{1.4}
+\label{eq:Y2_expression}
+\end{equation}
+
+%--------------------------------------------------------------------
+\paragraph{2. Движение на втором участке ($u=m_2$).}
+%--------------------------------------------------------------------
+
+При $t\in[t_0+\tau_1,t_0+T_r)$ имеем $u(t)=m_2$, и система принимает вид
+\[
+\dot Y(t)=AY(t)+Bm_2+Kf(t).
+\]
+
+\noindentПо формуле Коши:
+\begin{equation}
+Y(t)
+=
+e^{A(t-t_0-\tau_1)}Y^{2}
++
+\int_{t_0+\tau_1}^{t}
+e^{A(t-s)}(Bm_2+Kf(s))\,ds.
+\tag{1.5}
+\label{eq:second_arc}
+\end{equation}
+
+\noindentВ момент $t=t_0+T_r$ выполняется условие возврата:
+\[
+Y(t_0+T_r)=Y^{1}.
+\]
+
+\noindentПодставляя $t=t_0+T_r$ в \eqref{eq:second_arc}, получаем
+\begin{equation}
+Y^{1}
+=
+e^{A(T_r-\tau_1)}Y^{2}
++
+\int_{t_0+\tau_1}^{t_0+T_r}
+e^{A(t_0+T_r-s)}(Bm_2+Kf(s))\,ds.
+\tag{1.6}
+\label{eq:return_condition}
+\end{equation}
+
+
+%--------------------------------------------------------------------
+\paragraph{3. Исключение $Y^{2}$ (припасовывание).}
+%--------------------------------------------------------------------
+
+Подставляя выражение \eqref{eq:Y2_expression} в
+\eqref{eq:return_condition}, имеем
+\begin{equation*}
+Y^{1}=
+e^{A(T_r-\tau_1)}
+\left(
+e^{A\tau_1}Y^{1}
++
+\int_{t_0}^{t_0+\tau_1}
+e^{A(t_0+\tau_1-s)}
+\bigl(Bm_1+Kf(s)\bigr)\,ds
+\right)
++
+\int_{t_0+\tau_1}^{t_0+T_r}
+e^{A(t_0+T_r-s)}
+\bigl(Bm_2+Kf(s)\bigr)\,ds.
+\end{equation*}
+
+\noindent Используя свойство матричной экспоненты
+$e^{A(T_r-\tau_1)}e^{A\tau_1}=e^{AT_r}$, получаем
+\begin{equation*}
+Y^{1}=
+e^{AT_r}Y^{1}
++
+\int_{t_0}^{t_0+\tau_1}
+e^{A(t_0+T_r-s)}
+\bigl(Bm_1+Kf(s)\bigr)\,ds
++
+\int_{t_0+\tau_1}^{t_0+T_r}
+e^{A(t_0+T_r-s)}
+\bigl(Bm_2+Kf(s)\bigr)\,ds.
+\end{equation*}
+
+\noindent Перенося выражение $e^{AT_r}Y^{1}$ в левую часть, приходим к равенству
+\begin{equation}
+(E-e^{AT_r})Y^{1}
+=
+\int_{t_0}^{t_0+\tau_1}
+e^{A(t_0+T_r-s)}
+\bigl(Bm_1+Kf(s)\bigr)\,ds
++
+\int_{t_0+\tau_1}^{t_0+T_r}
+e^{A(t_0+T_r-s)}
+\bigl(Bm_2+Kf(s)\bigr)\,ds.
+\tag{1.7}
+\label{eq:Y1_matching}
+\end{equation}
+
+\noindent При обратимости матрицы $E-e^{AT_r}$ из
+\eqref{eq:Y1_matching} получаем выражение для точки переключения
+\begin{equation*}
+Y^{1}
+=
+(E-e^{AT_r})^{-1}
+\left(
+\int_{t_0}^{t_0+\tau_1}
+e^{A(t_0+T_r-s)}
+\bigl(Bm_1+Kf(s)\bigr)\,ds
++
+\int_{t_0+\tau_1}^{t_0+T_r}
+e^{A(t_0+T_r-s)}
+\bigl(Bm_2+Kf(s)\bigr)\,ds
+\right).
+\end{equation*}
+
+\noindent После замены
+\begin{equation*}
+Y^{1}
+=
+(E-e^{AT_r})^{-1}
+\left(
+\int_{0}^{\tau_1}
+e^{A(T_r-\xi)}
+\bigl(Bm_1+Kf(t_0+\xi)\bigr)\,d\xi
++
+\int_{0}^{T_r-\tau_1}
+e^{A\xi}
+\bigl(Bm_2+Kf(t_0+T_r-\xi)\bigr)\,d\xi
+\right).
+\end{equation*}
+
+\newpage
+\noindent{\large\textbf{\mbox{Критерий существования решения с заданным периодом возврата}}}
+\\
+\noindent{\large\textbf{\mbox{и нулевым начальным моментом времени}}}
+
+\begin{theorem} \cite{Eustafieva}
+Существует единственное решение системы (1.1) с заданным периодом возврата тогда и только тогда, когда при некоторой фиксированной величине $T_r$ выполняются следующие условия:
+
+\begin{enumerate}[label=\arabic*)]
+\item уравнение
+\begin{equation}
+\left(
+C,\,
+(E-e^{AT_r})^{-1}e^{Ax}
+\left(\int_0^x e^{-A\xi}(Bm_1+Kf(\xi))\,d\xi
++\int_0^{T_r-x} e^{A\xi}(Bm_2+Kf(T_r-\xi))\,d\xi
+\right)
+\right)=\ell_2
+\tag{2.1}
+\label{eq:condition21}
+\end{equation}
+имеет хотя бы одно решение, где $E$ -- единичная матрица, $x$ -- независимая переменная из интервала $(0,T_r)$;
+
+\item для величины $\tau_1$, удовлетворяющей уравнению (2.1), выполняется равенство \newline
+$(C,Y^1)=\ell_1$, где
+\[
+Y^1=(E-e^{AT_r})^{-1}\left(\int_0^{\tau_1} e^{A(T_r-\xi)}(Bm_1+Kf(\xi))\,d\xi+\int_0^{T_r-\tau_1} e^{A\xi}(Bm_2+Kf(T_r-\xi))\,d\xi\right),
+\]
+и интегралы
+\[
+K\int_0^{\tau_1} e^{-A\xi}f(\xi+kT_r)\,d\xi,
+\qquad
+K\int_0^{T_r-\tau_1} e^{A\xi}f((k+1)T_r-\xi)\,d\xi
+\]
+не зависят от $k\in\mathbb{N}\cup\{0\}$;
+
+\item величина $\tau_1$, удовлетворяющая условию 2), является наименьшим (или единственным) решением уравнения
+\[
+\left(C,\,e^{Ax}Y^1+\int_0^x e^{A(x-\xi)}(Bm_1+Kf(\xi))\,d\xi
+\right)=\ell_2,
+\]
+где $Y^1$ определена в условии 2), $x$ -- независимая переменная из интервала $(0,T_r)$;
+
+\item величина $T_r-\tau_1$ является наименьшим (или единственным) решением уравнения
+\[
+\left(C,\,e^{Az}Y^2+\int_0^z e^{A\xi}(Bm_2+Kf(\tau_1+z-\xi))\,d\xi
+\right)=\ell_1,
+\]
+где $\tau_1$ удовлетворяет условию 3), $z$ -- независимая переменная из интервала $(0,T_r)$,
+\[
+Y^2=e^{A\tau_1}Y^1+\int_0^{\tau_1} e^{A(\tau_1-\xi)}(Bm_1+Kf(\xi))\,d\xi,
+\]
+$Y^1$ определена в условии 2).
+\end{enumerate}
+\end{theorem}
+
+
+\subsection*{Постановка задачи}
+
+Согласно Теореме~1, существование $T_r$-двухточечно-колебательного решения
+гарантируется, в первую очередь, существованием решения $\tau_1$
+трансцендентного уравнения~\eqref{eq:condition21} (пункт~1),
+а также выполнением дополнительных условий (пункты~2--4).
+
+Напомним, что $\tau_1$ находится из условия,
+что траектория системы,
+построенная по формуле Коши и стартующая в момент времени $t_0=0$
+из точки переключения $Y^{1}$,
+достигает гиперплоскости переключения $L_2$
+ровно в момент времени $t=\tau_1$.
+Исключая координаты точек переключения
+путём припасовывания решений на соседних участках движения,
+получено уравнение \eqref{eq:condition21}
+относительно $x\in(0,T_r)$. Пусть
+\begin{equation*}
+    Q_1 = \int_0^{x} e^{-A\xi}\bigl(Bm_1+Kf(\xi)\bigr)\,d\xi \qquad
+    Q_2 = \int_0^{T_r-x} e^{A\xi}\bigl(Bm_2+Kf(T_r-\xi)\bigr)\,d\xi
+\end{equation*}
+
+\vspace{-15pt}
+\noindent
+\begin{minipage}[t]{0.65\textwidth}
+\begin{equation}
+\tag{3}\label{eq:trans_func}
+F(x)=
+\left(
+C,\,
+(E-e^{AT_r})^{-1} e^{Ax}
+\left(
+Q_1+Q_2
+\right)
+\right)
+-\ell_2.
+\end{equation}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.34\textwidth}
+\begin{equation}
+\tag{3.1}\label{eq:trans_eq}
+F(x)=0.
+\end{equation}
+\end{minipage}
+
+\vspace{15pt}
+Задача данной работы состоит в решении нелинейного (трансцендентного) уравнения $F(x)=0$ (\eqref{eq:trans_eq}), где $F(x)$ определена формулой \eqref{eq:trans_func}.
+
+\vspace{5pt}
+\noindent\textbf{Обзор численных методов решения нелинейных уравнений}
+
+Методы решения нелинейных уравнений
+обычно подразделяются на два основных класса: методы с локализацией корня и открытые методы~\cite{Press, Badr}.
+В отличие от быстрых, но потенциально расходящихся методов второго
+класса, методы первого гарантируют сходимость ценой снижения скорости.
+
+Ниже схематично проиллюстрирована работа рассматриваемых в данной
+работе методов поиска корня для скалярного уравнения $F(x)=0$.
+(Для оценки скорости сходимости используется формула $|e_{k+1}| = C|e_k|^p$, где $e_k$ -- погрешность на $k$-й итерации, $C$ -- константа, $p$ -- порядок сходимости.)
+
+
+\begin{itemize}
+
+\item \textbf{Метод дихотомии (Bisection method, Bi).}
+
+\noindent
+\begin{minipage}{0.6\textwidth}
+Метод дихотомии применяется для решения уравнения $F(x)=0$
+при условии непрерывности функции $y=F(x)$ на $(a,b)$ и выполнении условия
+F(a)F(b)<0,
+что гарантирует существование корня.
+
+На каждой итерации интервал делится пополам,
+а новое приближение определяется формулой
+\[
+x_{k+1}=\frac{a_k+b_k}{2}, \quad k=0,1,2,\ldots, \quad a_0=A, b_0=B
+\]
+Далее выбирается подинтервал, содержащий корень.
+
+Метод гарантированно сходится, однако обладает линейной скоростью сходимости (p = 1) \cite{Kalitkin,Press}.
+\end{minipage}
+\hfill
+\begin{minipage}{0.3\textwidth}
+\centering
+\vspace{-45pt}
+\includegraphics[width=\textwidth]{Bisection.png}
+
+\small Рис. 1 Bisection
+\end{minipage}
+
+
+\item \textbf{Метод деления отрезка на три части (Trisection method, Tri).}
+
+\noindent
+\begin{minipage}{0.6\textwidth}
+Метод трисекции является модификацией метода
+дихотомии. В данном случае интервал
+$(a,b)$ делится на три равные части.
+Вычисляются значения функции в точках
+\[
+x_{k+1}^1=a+\frac{b_k-a_k}{3},
+\quad
+x_{k+1}^2=a+\frac{2(b_k-a_k)}{3},
+\]
+\vspace{-5pt}
+\[
+k=0,1,2,\ldots, \quad a_0=A, b_0=B
+\]
+после чего выбирается подинтервал,
+в котором происходит смена знака функции.
+Метод гарантированно сходится,
+но обладает линейной скоростью сходимости (p = 1) и требует большего числа вычислений
+значений функции на каждой итерации.
+\end{minipage}
+\hfill
+\begin{minipage}{0.3\textwidth}
+\centering
+\vspace{0pt}
+\includegraphics[width=\textwidth]{Trisection.png}
+
+\small Рис. 2 Trisection
+\end{minipage}
+
+\item \textbf{Метод ложного положения
+(False Position method, FP).}
+
+\noindent
+\begin{minipage}{0.6\textwidth}
+Метод ложного положения использует
+линейную интерполяцию функции
+на интервале $(a,b)$.
+Новое приближение определяется
+точкой пересечения секущей,
+проходящей через точки
+$(a,F(a))$ и $(b,F(b))$,
+с осью абсцисс:
+\[
+x=b-\frac{F(b)(b-a)}{F(b)-F(a)}, \quad k=0,1,2,\ldots, \quad a_0=A, b_0=B
+\]
+Метод гарантированно сходится, но обладает линейной скоростью сходимости (p = 1).
+Также данный метод сохраняет интервал локализации корня.
+\end{minipage}
+\hspace{7pt}
+\hfill
+\begin{minipage}{0.38\textwidth}
+\centering
+\vspace{0pt}
+\includegraphics[width=\textwidth]{FPM.png}
+
+\small Рис. 3 FP
+\end{minipage}
+
+
+\item \textbf{Метод Ньютона
+(Newton--Raphson method, NR).}
+
+\noindent
+\begin{minipage}{0.6\textwidth}
+Метод Ньютона относится к открытым методам
+и основан на аппроксимации функции
+касательной в текущей точке.
+Итерационная формула имеет вид
+\[
+x_{k+1}=x_k-\frac{F(x_k)}{F'(x_k)}.
+\]
+Метод обладает квадратичной
+скоростью сходимости (p = 2),
+однако требует вычисления
+производной функции
+и чувствителен к выбору
+начального приближения (точка A на рис. 4).
+\end{minipage}
+\hfill
+\begin{minipage}{0.2\textwidth}
+\centering
+\vspace{-10pt}
+\includegraphics[width=\textwidth]{Newton.png}
+
+\small Рис. 4 NR
+\end{minipage}
+\\
+
+\item \textbf{Метод секущих (Secant method, Se).}
+
+\noindent
+\begin{minipage}{0.6\textwidth}
+Метод секущих представляет собой
+модификацию метода Ньютона,
+в которой производная функции
+заменяется разделенной разностью:
+\[
+x_{k+1}=x_k-
+\frac{x_k-x_{k-1}}
+{F(x_k)-F(x_{k-1})}F(x_k).
+\]
+Метод не требует вычисления производной
+функции и обладает сверхлинейной
+скоростью сходимости \\ (p $\approx 1.618$),
+однако не гарантирует
+сходимости итерационного процесса.
+\end{minipage}
+\hfill
+\begin{minipage}{0.2\textwidth}
+\centering
+\vspace{-10pt}
+\includegraphics[width=\textwidth]{Sectant.png}
+
+\small Рис. 5 Sectant
+\end{minipage}
+
+\item \textbf{Модифицированный метод секущих
+(Modified Secant method, MSe).}
+
+В данном методе производная
+заменяется разностью значений
+функции в точках $x$ и $x+\delta x$,
+что позволяет использовать
+одно начальное приближение.
+Итерационная формула имеет вид
+\[
+x_{k+1}=x_k-
+\frac{\delta x_k F(x_k)}
+{F(x_k+\delta x_k)-F(x_k)}, \quad \text{где} \quad \delta x_k \text{- малое приращение аргумента}
+\]
+
+Порядок сходимости данного метода зависит
+от стратегии выбора $\delta x_k$: в случае фиксации
+шага ($\delta x_k = \text{const}$) наблюдается линейная сходимость, 
+тогда как выбор приращения, пропорционального значению 
+самой функции ($\delta x_k = F(x_k)$), обеспечивает
+квадратичную сходимость, делая алгоритм эквивалентным
+методу Стеффенсена \cite{Press,Steffensen}.
+
+\item \textbf{Гибридный метод ложной позиции и модифицированного метода секущих
+(False Position--Modified Secant method, FP--MSe).}
+
+Метод FP--MSe объединяет преимущества метода ложной позиции
+и открытого модифицированного метода секущих.
+Пусть на $k$-й итерации задан интервал $(a_k,b_k)$,
+на концах которого $F(a_k)F(b_k)<0$.
+
+Сначала вычисляется приближение методом ложной позиции:
+\[
+x_k^{(FP)} = a_k - \frac{F(a_k)(b_k-a_k)}{F(b_k)-F(a_k)}.
+\]
+Затем это приближение уточняется по схеме
+модифицированного метода секущих:
+\[
+x_k^{(MSe)} = x_k^{(FP)} -
+\frac{\delta x_k\,F(x_k^{(FP)})}
+{F(x_k^{(FP)}+\delta x_k)-F(x_k^{(FP)})}.
+\]
+
+Итоговое новое приближение выбирается по правилу
+\[
+x_{k+1}=
+\begin{cases}
+x_k^{(MSe)}, & \text{если } x_k^{(MSe)}\in(a_k,b_k)
+\text{ и } |F(x_k^{(MSe)})|<|F(x_k^{(FP)})|,\\[2mm]
+x_k^{(FP)}, & \text{в противном случае}.
+\end{cases}
+\]
+После этого интервал локализации корня обновляется
+по знаку функции $F(x_{k+1})$.
+Данный метод обладает гарантированной линейной сходимостью \cite{Badr}..
+
+\item \textbf{Метод Галлея (Halley method).}
+
+Метод Галлея является обобщением метода Ньютона,
+поскольку использует информацию о второй производной функции.
+Он получается при учёте второго члена разложения
+функции $F(x)$ в ряд Тейлора в окрестности текущего
+приближения~$x_k$.
+
+Итерационная формула имеет вид
+\[
+x_{k+1}=x_k-
+\frac{F(x_k)}{F'(x_k)}
+\left(
+1-\frac{F(x_k)F''(x_k)}{2F'(x_k)^2}
+\right)^{-1}.
+\]
+
+Метод Галлея обладает кубической скоростью
+сходимости.
+Однако применение метода оправдано только
+в тех случаях, когда вычисление второй
+производной $F''(x)$ не приводит к
+существенным дополнительным затратам
+\cite{Press}.
+
+
+\item \textbf{Метод Риддера (Ridders method, Rid).}
+
+Метод Риддера является модификацией метода ложной позиции
+и основан на экспоненциальной аппроксимации функции
+на интервале $(x_1,x_2)$, где $F(x_1)F(x_2)<0$.
+
+Идея заключается в том, что на интервале $(x_1, x_2)$ 
+вводится вспомогательная функция $h(x) = F(x)e^{ax}$, 
+где параметр $a$ подбирается таким образом, чтобы экспоненциальный 
+множитель компенсировал кривизну исходной функции $F(x)$. 
+В результате этого узловые точки $(x_1, h(x_1))$, $(x_3, h(x_3))$ 
+и $(x_2, h(x_2))$ оказываются на одной прямой, 
+что позволяет эффективно применить метод ложной позиции.
+
+Сначала вычисляется значение функции
+в средней точке
+\[
+x_3=\frac{x_1+x_2}{2}.
+\]
+
+Далее вводится вспомогательная функция $h(x)=F(x)e^{ax}$,
+
+где параметр $a$ выбирается таким образом,
+чтобы выполнялось условие
+\[
+h(x_3)=\frac{h(x_1)+h(x_2)}{2} \implies 2F(x_3)e^{ax_3}=F(x_1)e^{ax_1}+F(x_2)e^{ax_2}
+\]
+\[
+\implies 2F(x_3)e^{a(x_3-x_1)}=F(x_1)+F(x_2)e^{a(x_2-x_1)} \implies F(x_1)-2F(x_3)e^{Q}+F(x_2)e^{2Q}=0,
+\]
+
+где $Q=a(x_3-x_1)$. \\
+Решая это уравнение относительно $e^{Q}$, получаем:
+\begin{equation}
+e^{Q}
+=
+\frac{F(x_3)+\operatorname{sign}(F(x_2))
+\sqrt{F(x_3)^2-F(x_1)F(x_2)}}
+{F(x_2)}.
+\tag{4.1}
+\label{eq:Ridders_e_Q}
+\end{equation}
+
+Для нахождения нового приближения к корню $x_4$ применяется метод
+ложной позиции к преобразованной функции $h(x) = F(x)e^{ax}$. 
+Итерационный шаг записывается в виде:
+\[
+x_4 = x_3 - h(x_3) \frac{x_3 - x_1}{h(x_3) - h(x_1)},
+\]
+где $h(x_1) = F(x_1)e^{ax_1}$, $h(x_3) = F(x_3)e^{ax_3} = F(x_3)e^{ax_1}e^Q$.
+\[
+x_4 = x_3 - (x_3 - x_1) \frac{F(x_3)e^Q}{F(x_3)e^Q - F(x_1)}.
+\]
+
+Подставляя в данное выражение вместо $e^Q$ правую 
+часть \eqref{eq:Ridders_e_Q}, получаем формулу нового приближения:
+\[
+x_4 = x_3 + (x_3 - x_1)
+\frac{\operatorname{sign}(F(x_1) - F(x_2))\,F(x_3)}
+{\sqrt{F(x_3)^2 - F(x_1)F(x_2)}}.
+\]
+
+После вычисления $x_4$ выбирается один из подинтервалов $(x_1,x_4)$ или $(x_4,x_2)$,
+на концах которого функция применяет значения разных знаков.
+
+Метод обладает квадратичной скоростью сходимости~\cite{Press}.
+
+
+
+
+\item \textbf{Метод Брента
+(Van Wijngaarden--Dekker--Brent method).}
+
+Метод Брента является гибридным методом,
+объединяющим методы дихотомии, секущих
+и обратной квадратичной интерполяции.
+
+В процессе работы алгоритм непрерывно обновляет три ключевые точки:
+\begin{itemize}
+    \item $b$ — наилучшее текущее приближение к корню (модуль функции минимален);
+    \item $c$ — точка, гарантирующая локализацию корня (выполняется $F(b)F(c) < 0$);
+    \item $a$ — значение наилучшего приближения $b$ с предыдущей итерации.
+\end{itemize}
+
+Когда значения функции в точках $a, b, c$ попарно различны,
+метод Брента применяет обратную квадратичную интерполяцию. 
+
+Запишем интерполяционный многочлен Лагранжа для трех узлов $(F(a), a), (F(b), b), (F(c), c)$:
+\begin{equation*}
+\begin{aligned}
+    x(y) &= \frac{(y - F(b))(y - F(c))}{(F(a) - F(b))(F(a) - F(c))} a 
+         &+ \frac{(y - F(a))(y - F(c))}{(F(b) - F(a))(F(b) - F(c))} b \\
+         &+ \frac{(y - F(a))(y - F(b))}{(F(c) - F(a))(F(c) - F(b))} c
+\end{aligned}
+\end{equation*}
+
+Подставляем $y = 0$:
+\begin{equation*}
+    x = \frac{F(b)F(c) a}{(F(a) - F(b))(F(a) - F(c))} + \frac{F(a)F(c) b}{(F(b) - F(a))(F(b) - F(c))} + \frac{F(a)F(b) c}{(F(c) - F(a))(F(c) - F(b))}
+\end{equation*}
+
+Пусть $R = \frac{F(b)}{F(c)}$, $S = \frac{F(b)}{F(a)}$ и $T = \frac{F(a)}{F(c)}$:
+
+Тогда предыдущая формула может быть переписана в виде
+\begin{equation*}
+    x = b + \frac{P}{Q}, \quad \text{где}
+\end{equation*}
+\begin{equation*}
+    P = S \cdot \big[ T(R - T)(c - b) - (1 - R)(b - a) \big]
+    \qquad Q = (T - 1)(R - 1)(S - 1)
+\end{equation*}
+
+Метод Брента применяет следующую стратегию выбора поправки $d = \frac{P}{Q}$:
+\begin{itemize}
+    \item \textbf{Обратная квадратичная интерполяция}: используется, если все три текущих значения $F(a), F(b), F(c)$ попарно различны.
+    \item \textbf{Метод секущих}: применяется, если $F(a) = F(c)$ (ситуация $F(b)=F(c)$ невозможна из-за условия локализации $F(b)F(c)<0$, а при $F(a)=F(b)$ возникает деление на ноль, что немедленно запускает шаг дихотомии). Формула упрощается до линейной интерполяции: $P = S(c - b)$, $Q = S - 1$.
+    \item \textbf{Метод дихотомии}: выполняется, если новое приближение $b + d$ выходит за границы интервала локализации $(b, c)$ или если вычисленный интерполяционный шаг $d$ убывает медленнее шага дихотомии.
+\end{itemize}
+
+Метод сходится сверхлинейно ($p \approx 1.84$) на гладких
+функциях, гарантируя в худшем случае линейную скорость сходимости
+\cite{Press}.
+
+
+
+\item \textbf{Методы типа Стеффенсена (Steffensen-like methods).}
+
+Классический метод Стеффенсена~\cite{Steffensen} является итерационным
+методом решения нелинейных уравнений $F(x)=0$, не требующим вычисления
+производной функции. Итерационная схема в классическом случае имеет вид:
+\begin{equation}
+    x_{k+1} = x_k - \frac{F(x_k)^2}{F(x_k + F(x_k)) - F(x_k)}, \quad k = 0, 1, 2, \dots
+    \tag{4.2}
+    \label{eq:original_steffensen}
+\end{equation}
+Этот метод обладает квадратичной скоростью сходимости.
+
+В работе~\cite{Traub} Джозеф Трауб обобщил данный метод, введя варьируемый параметр~$\gamma_k \neq 0$:
+\[
+x_{k+1} = x_k - \frac{\gamma_k F(x_k)^2}{F(x_k + \gamma_k F(x_k)) - F(x_k)}.
+\]
+Аппроксимируя производную $F'(x_k)$ через разделенную
+разность $F[x_k, x_{k-1}]$, Трауб получил следующую формулу для
+параметра $\gamma_k$:
+\[
+\gamma_k = -\frac{1}{N_1'(x_k)} = - \frac{1}{F[x_k, x_{k-1}]} = - \frac{x_k - x_{k-1}}{F(x_k) - F(x_{k-1})}, \quad k \ge 1,
+\]
+где $N_1(t)$ — интерполяционный многочлен Ньютона первой степени (общая формула: $N_n(t) = F(x_0) + \sum_{k=1}^{n} F[x_0, x_1, \dots, x_k] \prod_{j=0}^{k-1} (t - x_j)$).
+
+Этот подход повысил порядок сходимости до сверхквадратичного: $1 + \sqrt{2} \approx 2.414$.
+
+В работе \cite{Dzunic} идея использования памяти была развита за счет 
+применения более точной аппроксимации производной $F'(x_k)$. Авторы
+предложили интерполировать функцию $F(x)$ многочленом Ньютона второй
+степени $N_2(t)$. Этот многочлен строится по трем доступным узлам
+из текущей и предыдущей итераций: $x_k$, $x_{k-1}$ и $w_{k-1}$. Узел
+$w_{k-1}$ вычисляется на основе данных предыдущего шага как $w_{k-1} = x_{k-1} + \gamma_{k-1} F(x_{k-1})$.
+
+Многочлен Ньютона, интерполирующий функцию $F(x)$ в этих узлах, записывается
+через разделенные разности следующим образом:
+\[
+N_2(t) = F(x_k) + F[x_k, x_{k-1}](t - x_k) + F[x_k, x_{k-1}, w_{k-1}](t - x_k)(t - x_{k-1}).
+\]
+Для получения аппроксимации производной $F'(x_k)$ этот многочлен
+дифференцируется по переменной $t$, и результат вычисляется в точке текущего приближения~$t = x_k$:
+\[
+N_2'(x_k) = \left. \frac{d}{dt} N_2(t) \right|_{t=x_k} = F[x_k, x_{k-1}] + F[x_k, x_{k-1}, w_{k-1}](x_k - x_{k-1}).
+\]
+Таким образом, модифицированная итерационная схема с параметром $\gamma_k$ принимает вид:
+\begin{equation}
+x_{k+1} = x_k - \frac{\gamma_k\,F(x_k)^2}{F\!\bigl(x_k+\gamma_k F(x_k)\bigr)-F(x_k)},
+\qquad
+\begin{aligned}
+\gamma_0 &\text{ задаётся начальным условием},\\
+\gamma_k &= -\frac{1}{N_2'(x_k)}, \quad k\ge 1.
+\end{aligned}
+\tag{4.3}
+\label{eq:modified_steffensen}
+\end{equation}
+Предложенный метод обладает кубической скоростью сходимости.
+
+В данной работе из этого раздела будут использованы формулы \eqref{eq:original_steffensen} (далее St или Steffensen) и \eqref{eq:modified_steffensen} (далее MSt или Modified Steffensen).
+\end{itemize}
+
+
+
+
+
+\noindent\textbf{Реализация численных методов в \textsc{Matlab} и \textsc{Julia}.}
+
+Для численного решения скалярного уравнения $F(x)=0$
+в среде \textsc{Matlab} может быть использована функция \texttt{fzero} \cite{Matlab}.
+Она предназначена для поиска корня скалярной функции
+и реализует гибридную схему, основанную на комбинации
+методов дихотомии, секущих и обратной квадратичной интерполяции.
+
+\medskip
+
+\noindent
+В среде \textsc{Matlab} базовый вызов функции поиска корня имеет вид:
+\[
+x = \texttt{fzero(@F,\,init)}
+\]
+
+\noindent
+\texttt{x}\hspace{1.8em}--- найденный корень уравнения $F(x)=0$;\\
+\texttt{@F}\hspace{1em}--- указатель на скалярную функцию $F(x)$;\\
+\texttt{init}\hspace{0.6em}--- начальное приближение или интервал.
+
+\medskip
+
+\noindent
+Для получения дополнительной информации о ходе вычислений и управления параметрами доступен расширенный вызов:
+\[
+\texttt{[x, fval, exitflag, output] = fzero(@F,\,init,\,options)}
+\]
+
+\noindent
+\texttt{fval} --- значение функции в найденной точке; \\
+\texttt{exitflag} --- код причины остановки алгоритма; \\
+\texttt{output} --- структура, содержащая подробную информацию о процессе решения; \\
+\texttt{options} --- структура, определяющая дополнительные параметры поиска корня (например, задание критериев остановки, настройка вывода информации по итерациям);
+
+\medskip
+
+\noindent\textbf{Дополнительные инструменты.}
+
+\noindent
+Помимо \texttt{fzero}, специализированные задачи поиска корней в \textsc{Matlab} решаются следующими встроенными функциями:
+\begin{itemize}
+    \vspace{-2pt}
+    \item \texttt{roots(p)}~--- вычисление всех (включая комплексные) корней алгебраического многочлена, заданного вектором коэффициентов \texttt{p} \cite{Matlab};
+    \vspace{-2pt}
+    \item \texttt{fsolve(fun, x0)}~--- решение многомерных систем нелинейных уравнений \cite{Matlab};
+    \vspace{-2pt}
+    \item \texttt{solve(eqn,\,var)} --- функция решает \texttt{eqn} относительно \texttt{var} \cite{Matlab}.\\
+    \texttt{eqn} --- символьное уравнение или система уравнений;\\
+    \texttt{var} --- переменная, относительно которой решается уравнение.
+    \vspace{-2pt}
+    \item \texttt{vpasolve(eqn,\,var,\,init)} --- находит численное решение \texttt{eqn} относительно \texttt{var} \cite{Matlab}.\\
+    \texttt{init} --- начальное приближение или интервал поиска.
+\end{itemize}
+
+Метод \texttt{fzero} в данной работе используется при составлении таблицы 1 (см. далее). 
+Дополнительные инструменты приведены для справки.
+Более подробную информацию можно найти в документации \cite{Matlab}.
+
+\medskip
+
+В языке \textsc{Julia} численное решение уравнения $F(x)=0$
+реализуется с помощью пакета \texttt{Roots.jl}, основной
+интерфейс которого задаётся функцией \texttt{find\_zero}~\cite{Julia}:
+\[
+x = \texttt{find\_zero(F,\,init,\,method)}.
+\]
+\\
+
+\vspace{-1cm}
+\begin{samepage}
+\noindent
+\texttt{F}\hspace{1.8em}--- функция;\\
+\texttt{init}\hspace{1em}--- начальное приближение или интервал;\\
+\texttt{method}\hspace{0.2em}--- используемый численный метод (например, \texttt{Bisection()}, \texttt{FalsePosition()}, \texttt{Secant()}, \texttt{Roots.Newton()}, \texttt{Roots.Halley()}, \texttt{Roots.Brent()}, \texttt{Roots.Ridders()}, \texttt{Order2()}).
+\end{samepage}
+\medskip
+
+Таким образом, \textsc{Matlab} и \textsc{Julia}
+предоставляют средства для численного решения
+трансцендентного уравнения~\eqref{eq:trans_eq},
+позволяя использовать или реализовать различные
+численные методы поиска корней.
+\\
+
+
+
+
+\noindent\textbf{Пример решения трансцендентного уравнения.}
+
+В настоящем разделе уравнение~\eqref{eq:trans_eq}
+решается численными методами
+для модельной системы, приведенной в примере статьи
+В.\,В.~Евстафьевой \cite{Eustafieva}.
+Рассматривается система порядка $n=3$
+со следующими матрицами и параметрами:
+\[
+A=
+\begin{pmatrix}
+-32 & -18.75 & -22.5\\
+37 & 21 & 29\\
+7 & 4.25 & 4.5
+\end{pmatrix},
+\quad
+B=
+\begin{pmatrix}
+-2.5\\ 4\\ 0.5
+\end{pmatrix},
+\quad
+C=
+\begin{pmatrix}
+-3\\ -1.5\\ -6
+\end{pmatrix},
+\quad
+K=
+\begin{pmatrix}
+1.5\\ -2\\ -0.5
+\end{pmatrix},
+\]
+\[
+m_1=-5,\qquad
+m_2=3.842556,\qquad
+\ell_1=-6,\qquad
+\ell_2=6.629453,\qquad
+T_r= \frac{3\pi}{2},
+\]
+\[
+f(t)=0.5+\sin(2t+1.815774)+3\sin(4t+1.62).
+\]
+
+После подстановки параметров в~\eqref{eq:trans_func} получаем
+\vspace{-9pt}
+\begin{equation*}
+\begin{aligned}
+F(x) = \Biggl( 
+    &\begin{pmatrix} -3 \\ -1.5 \\ -6 \end{pmatrix}^{\!\!T}, 
+    \left(E-e^{A\frac{3\pi}{2}}\right)^{-1} e^{Ax} 
+    \biggl(\int_0^{x} e^{-A\xi}\left(
+            -5 \begin{pmatrix} -2.5 \\ 4 \\ 0.5 \end{pmatrix} 
+            + \begin{pmatrix} 1.5 \\ -2 \\ -0.5 \end{pmatrix} f(\xi) 
+        \right) d\xi \\
+        &+ \int_0^{\frac{3\pi}{2}-x} e^{A\xi} 
+        \left( 
+            3.842556 \begin{pmatrix} -2.5 \\ 4 \\ 0.5 \end{pmatrix} 
+            + \begin{pmatrix} 1.5 \\ -2 \\ -0.5 \end{pmatrix} f\left(\frac{3\pi}{2}-\xi\right) 
+        \right) d\xi 
+    \biggr) 
+\Biggr) - 6.629453
+\end{aligned}
+\end{equation*}
+
+Решение уравнения \eqref{eq:trans_eq} выполнено численно на интервале $(0, \frac{3\pi}{2})$ с точностью $10^{-12}$, которая обеспечивается критериями остановки, принятыми для каждого метода (невязка и/или длина интервала).
+Вычисления выполнены в среде \textsc{Julia} и \textsc{Matlab}.
+Ниже приведен график функции \eqref{eq:trans_func} на интервале $(0, \frac{3\pi}{2})$.
+
+\newpage
+
+\setcounter{figure}{5}
+\begin{figure}[h]
+\centering
+\begin{minipage}{0.87\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{F_x.png}
+    \caption{График функции $F(x)$ (условие переключения)}
+\end{minipage}
+\end{figure}
+
+Данный график построен при помощи библиотеки \texttt{matplotlib} в \texttt{Python} \cite{matplotlib}.
+\vspace{10pt}
+
+Ниже приведем код и блок-схему метода MSe с подробным разбором. Реализация остальных методов приведена в приложении (\texttt{numMethods.jl}).
+
+
+
+\vspace{-10pt}
+\begin{lstlisting}[basicstyle=\ttfamily\bfseries\small]
+
+function modified_secant(F::Function, x0::Float64; tol, maxiter)
+    x = x0 # (*@\text{Начальное приближение}@*)
+    it = 0 # (*@\text{Счётчик итераций}@*)
+    while it < maxiter 
+        fx = F(x)  # (*@\text{Вычисление значения функции в текущей точке}@*)
+        # (*@\text{Проверка критерия остановки по невязке}@*)
+        abs(fx) < tol && return x, it 
+        # (*@\text{Шаг пропорционален значению функции (эквивалент метода Стеффенсена)}@*)
+        d = fx 
+        denom = F(x + d) - fx # (*@\text{Разность значений функции}@*)
+        @assert denom != 0.0 "(*@\text{Деление на ноль!}@*)"
+        xnew = x - d * fx / denom # (*@\text{Вычисление нового приближения}@*)
+        # (*@\text{Проверка критерия остановки по приращению аргумента}@*)
+        if abs(xnew - x) < tol
+            return xnew, it + 1
+        end
+        # (*@\text{Обновление текущего приближения и счётчика итераций}@*)
+        x = xnew
+        it += 1
+    end
+    return x, it
+end
+
+\end{lstlisting}
+
+
+\begin{figure}[h!]
+\centering
+\begin{tikzpicture}[
+    node distance=1.5cm and 2.5cm,
+    startstop/.style={rectangle, rounded corners, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=gray!10},
+    process/.style={rectangle, minimum width=4cm, minimum height=1cm, text centered, draw=black},
+    decision/.style={diamond, aspect=2, minimum width=3cm, minimum height=1cm, text centered, draw=black},
+    arrow/.style={thick, -{Stealth[scale=1.2]}}
+    ]
+
+    % Узлы
+    \node (start) [startstop] {Начало};
+    
+    \node (init) [process, below=0.8cm of start] {$x = x_0$, $it = 0$};
+    
+    \node (loop) [decision, below=0.8cm of init] {$it < maxiter$?};
+    
+    \node (fx) [process, below=0.8cm of loop] {$fx = F(x)$};
+    
+    \node (tol1) [decision, below=0.8cm of fx] {$|fx| < tol$?};
+    
+    \node (calc) [process, below=0.8cm of tol1] {
+        \begin{tabular}{c}
+        $d = fx$ \\ 
+        $denom = F(x + d) - fx$ 
+        \end{tabular}
+    };
+    
+    \node (assert) [decision, below=0.8cm of calc] {$denom \neq 0$?};
+    
+    \node (xnew) [process, below=0.8cm of assert] {$x_{new} = x - d \cdot \frac{fx}{denom}$};
+    
+    \node (tol2) [decision, below=0.8cm of xnew] {$|x_{new} - x| < tol$?};
+    
+    \node (update) [process, below=0.8cm of tol2] {$x = x_{new}$, $it = it + 1$};
+    
+    % Блоки возврата
+    \node (ret1) [startstop, right=2.5cm of tol1] {Возврат $x, it$};
+    \node (ret2) [startstop, right=2.5cm of assert] {Ошибка: Деление на 0};
+    \node (ret3) [startstop, right=2.5cm of tol2] {Возврат $x_{new}, it+1$};
+    \node (ret4) [startstop, right=3.5cm of loop] {Возврат $x, it$};
+
+    % Связи (Стрелки)
+    \draw [arrow] (start) -- (init);
+    \draw [arrow] (init) -- (loop);
+    
+    \draw [arrow] (loop) -- node[anchor=east] {Да} (fx);
+    \draw [arrow] (loop) -- node[anchor=south] {Нет} (ret4);
+    
+    \draw [arrow] (fx) -- (tol1);
+    
+    \draw [arrow] (tol1) -- node[anchor=east] {Нет} (calc);
+    \draw [arrow] (tol1) -- node[anchor=south] {Да} (ret1);
+    
+    \draw [arrow] (calc) -- (assert);
+    
+    \draw [arrow] (assert) -- node[anchor=east] {Да} (xnew);
+    \draw [arrow] (assert) -- node[anchor=south] {Нет} (ret2);
+    
+    \draw [arrow] (xnew) -- (tol2);
+    
+    \draw [arrow] (tol2) -- node[anchor=east] {Нет} (update);
+    \draw [arrow] (tol2) -- node[anchor=south] {Да} (ret3);
+    
+    % Возврат цикла
+    \draw [arrow] (update.west) -- ++(-1.5,0) |- (loop.west);
+
+\end{tikzpicture}
+\caption{Блок-схема алгоритма модифицированного метода секущих (MSe)}
+\label{fig:mse_flowchart}
+\end{figure}
+
+В представленной блок-схеме используются математические формулы, соответствующие приведенному ранее описанию алгоритма модифицированного метода секущих.
+
+
+
+
+\newpage
+Численные значения, представленные в таблице~\ref{tab:tau_compare}, получены на основе кода из приложения (\texttt{numMethods.jl}).
+
+\vspace{10pt}
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.15}
+
+\caption{Сравнение численных методов решения уравнения~\eqref{eq:trans_eq}}
+\label{tab:tau_compare}
+
+\rowcolors{1}{gray!15}{white}
+
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\rowcolor{gray!30}
+Method & $\tau_1$ & Number of iterations & $|\tau_1 - \pi/2|$ \\
+\midrule
+Bisection         & 1.570799848595700 & 42 & $3.5218\cdot10^{-6}$ \\
+Trisection        & 1.570799848553825 & 27 & $3.5218\cdot10^{-6}$ \\
+False Position    & 1.551712098307423 & 200 & $1.9084\cdot10^{-6}$ \\
+Newton--Raphson   & 1.570799848837137 & 57  & $3.5220\cdot10^{-6}$ \\
+Secant            & 1.570799848580684 & 16  & $3.5218\cdot10^{-6}$ \\
+Modified Secant   & 1.570799848589167 & 5 & $3.5218\cdot10^{-6}$ \\
+FP--MSe           & 1.570799848900535 & 7  & $3.5221\cdot10^{-6}$ \\
+Halley            & 1.570799848405245 & 5  & $3.5216\cdot10^{-6}$ \\
+Ridders           & 1.570799848862333 & 11  & $3.5221\cdot10^{-6}$ \\
+VW--Brent         & 1.570799848737147 & 19 & $3.5219\cdot10^{-6}$ \\
+Steffensen        & 1.570799848924731 & 11  & $3.5221\cdot10^{-6}$ \\
+\midrule
+Analytical value  & $\pi/2 \approx 1.570796$ & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Из таблицы видно, что все рассматриваемые методы
+дают практически одно и то же значение момента
+первого переключения:
+\[
+\tau_1 \approx 1.57079985.
+\]
+Отклонение от аналитической оценки
+$\tau_1 \approx \pi/2$
+составляет порядка $3.5\cdot 10^{-6}$.
+
+Следует отметить, что приведённые в таблице
+результаты соответствуют случаю достаточно близкого
+начального приближения к искомому корню.
+В этой ситуации методы MSe, FP--MSe, Halley, Ridders и Steffensen
+демонстрируют быструю сходимость.
+
+
+Для исследования влияния начальных данных на скорость сходимости
+численных методов была построена карта сходимости на плоскости
+$(x_0,x_1)$.
+Параметры $x_0$ и $x_1$ задают начальные данные алгоритмов поиска корня.
+Для интервальных методов (Bisection, False Position, Trisection,
+Ridders, Brent и FP--MSe) величины
+$x_0$ и $x_1$ определяют границы начального интервала.
+Для метода Secant они используются как два начальных приближения.
+Для методов Newton, Halley, MSe и метода
+Steffensen в качестве начального приближения принималась середина
+интервала
+\[
+x_m=\frac{x_0+x_1}{2}.
+\]
+Для каждой пары $(x_0,x_1)$ выполнялся запуск всех рассматриваемых
+методов, после чего фиксировался метод, достигший решения за
+наименьшее число итераций. Полученные результаты представлены на
+(рис.~8).
+
+
+\newpage
+
+\begin{figure}[h]
+\centering
+\begin{minipage}{1.1\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{map.png}
+    \small Рис. 7 Карта сходимости методов
+\end{minipage}
+\end{figure}
+
+Для количественной характеристики эффективности методов была
+построена диаграмма числа выигранных точек (рис.~8).
+Выигранной считается точка $(x_0,x_1)$, в которой соответствующий метод достигает
+решения за наименьшее число итераций.
+
+\vspace{10pt}
+\setcounter{figure}{7}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{bar_chart.png}
+\caption{Число выигранных точек}
+\end{figure}
+
+
+Таким образом, результаты, полученные на сетке начальных данных,
+в целом согласуются с выводами, сделанными на основе частного примера,
+приведённого в таблице~\ref{tab:tau_compare}.
+Наибольшее число выигранных точек демонстрирует метод Modified Secant (MSe),
+который существенно превосходит остальные методы.
+Высокую эффективность также показывают методы Halley и Ridders,
+занимающие второе и третье места.
+Метод FP--MSe, являющийся одним из лучших в частном примере,
+в общем случае уступает указанным методам, хотя сохраняет достаточно высокую эффективность.
+Следовательно, наиболее устойчивыми к выбору начальных приближений
+оказались методы MSe, Halley и Ridders.
+
+
+\newpage
+
+\begin{thebibliography}{9}
+
+\bibitem{Eustafieva}
+\href{https://www.mathnet.ru/php/archive.phtml?wshow=paper&jrnid=mzm&paperid=14020&option_lang=rus}{
+Евстафьева В.~В.
+Об одном типе колебательных решений неавтономной системы
+с релейным гистерезисом.
+Математические заметки, 2024.}
+
+\bibitem{Kalitkin}{
+    Калиткин Н. Н. Численные методы: учеб. пособие. — 2-е изд., исправленное. — СПб.: БХВ-Петербург, 2011. — 592 с.
+}
+
+
+\bibitem{Press}
+\href{https://faculty.kfupm.edu.sa/phys/aanaqvi/Numerical%20Recipes-The%20Art%20of%20Scientific%20Computing%203rd%20Edition%20(Press%20et%20al).pdf}{
+Press W.~H., Teukolsky S.~A., Vetterling W.~T., Flannery B.~P.
+Numerical Recipes: The Art of Scientific Computing.
+Cambridge University Press, 2007.}
+
+\bibitem{Badr}
+\href{https://www.researchgate.net/publication/360883886_Novel_hybrid_algorithms_for_root_determining_using_advantages_of_open_methods_and_bracketing_methods}{
+Badr E., Attiya H., El-Ghamry A.
+Novel hybrid algorithms for root determining using advantages of open methods and bracketing methods.
+Alexandria Engineering Journal, 2022.}
+
+\bibitem{Steffensen}{
+    Steffensen, I.F. (1933) Remarks on Iteration. Scandinavian Actuarial Journal, 1933, 64-72
+}
+
+\bibitem{Traub}{
+    Traub, J.F. (1964) Iterative Methods for the Solution of Equations. Prentice-Hall, Englewood Cliffs.
+}
+
+\bibitem{Dzunic}
+\href{https://www.sciencedirect.com/science/article/pii/S0893965912001395}{
+Džunić J., Petković M.
+A cubically convergent Steffensen-like method for solving nonlinear equations.
+Applied Mathematics Letters, 2012.}
+
+\bibitem{Matlab}
+MathWorks.
+MATLAB Documentation.
+Available at:
+\url{https://www.mathworks.com/help/matlab/ref/fzero.html}
+\url{https://www.mathworks.com/help/matlab/ref/roots.html}
+\url{https://www.mathworks.com/help/optim/ug/fsolve.html}
+\url{https://www.mathworks.com/help/symbolic/sym.solve.html}
+\url{https://www.mathworks.com/help/symbolic/sym.vpasolve.html}
+    
+
+\bibitem{Julia}
+Julia Programming Language.
+Documentation.
+Available at:
+\url{https://docs.julialang.org/}
+\url{https://github.com/JuliaMath/Roots.jl/}
+
+\bibitem{matplotlib}{
+    Matplotlib documentation. Available at: \url{https://matplotlib.org/stable/}
+}
+
+\end{thebibliography}
+\end{document}
