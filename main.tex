@@ -1,4 +1,4 @@
-﻿\documentclass[12pt,a4paper]{article}
+\documentclass[12pt,a4paper]{article}
 
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{geometry}
@@ -574,7 +574,7 @@ $(a,F(a))$ и $(b,F(b))$,
 x=b-\frac{F(b)(b-a)}{F(b)-F(a)}, \quad k=0,1,2,\ldots, \quad a_0=A, b_0=B
 \]
 Метод гарантированно сходится, но обладает линейной скоростью сходимости (p = 1).
-Также данный метод сохраняет интервал локализации корня.
+Также данный метод сохраняет интервал локализации корня. \cite{Press}
 \end{minipage}
 \hspace{7pt}
 \hfill
@@ -604,7 +604,7 @@ x_{k+1}=x_k-\frac{F(x_k)}{F'(x_k)}.
 однако требует вычисления
 производной функции
 и чувствителен к выбору
-начального приближения (точка A на рис. 4).
+начального приближения (точка A на рис. 4) \cite{Kalitkin,Press}.
 \end{minipage}
 \hfill
 \begin{minipage}{0.2\textwidth}
@@ -633,7 +633,7 @@ x_{k+1}=x_k-
 функции и обладает сверхлинейной
 скоростью сходимости \\ (p $\approx 1.618$),
 однако не гарантирует
-сходимости итерационного процесса.
+сходимости итерационного процесса \cite{Press}.
 \end{minipage}
 \hfill
 \begin{minipage}{0.2\textwidth}
@@ -842,7 +842,7 @@ x_4 = x_3 + (x_3 - x_1)
 \begin{itemize}
     \item \textbf{Обратная квадратичная интерполяция}: используется, если все три текущих значения $F(a), F(b), F(c)$ попарно различны.
     \item \textbf{Метод секущих}: применяется, если $F(a) = F(c)$ (ситуация $F(b)=F(c)$ невозможна из-за условия локализации $F(b)F(c)<0$, а при $F(a)=F(b)$ возникает деление на ноль, что немедленно запускает шаг дихотомии). Формула упрощается до линейной интерполяции: $P = S(c - b)$, $Q = S - 1$.
-    \item \textbf{Метод дихотомии}: выполняется, если новое приближение $b + d$ выходит за границы интервала локализации $(b, c)$ или если вычисленный интерполяционный шаг $d$ убывает медленнее шага дихотомии.
+    \item \textbf{Метод дихотомии}: применяется, если новое приближение $b + d$ выходит за его границы, интерполяционный шаг убывает менее чем в два раза по сравнению с прошлыми итерациями, или достигнут предел заданной точности.
 \end{itemize}
 
 Метод сходится сверхлинейно ($p \approx 1.84$) на гладких
@@ -1046,7 +1046,7 @@ f(t)=0.5+\sin(2t+1.815774)+3\sin(4t+1.62).
 
 После подстановки параметров в~\eqref{eq:trans_func} получаем
 \vspace{-9pt}
-\begin{equation*}
+\begin{equation}
 \begin{aligned}
 F(x) = \Biggl( 
     &\begin{pmatrix} -3 \\ -1.5 \\ -6 \end{pmatrix}^{\!\!T}, 
@@ -1054,8 +1054,10 @@ F(x) = \Biggl(
     \biggl(\int_0^{x} e^{-A\xi}\left(
             -5 \begin{pmatrix} -2.5 \\ 4 \\ 0.5 \end{pmatrix} 
             + \begin{pmatrix} 1.5 \\ -2 \\ -0.5 \end{pmatrix} f(\xi) 
-        \right) d\xi \\
-        &+ \int_0^{\frac{3\pi}{2}-x} e^{A\xi} 
+        \right) d\xi 
+        \\[-2mm]
+        &\hspace{-2.5em}
+        + \int_0^{\frac{3\pi}{2}-x} e^{A\xi} 
         \left( 
             3.842556 \begin{pmatrix} -2.5 \\ 4 \\ 0.5 \end{pmatrix} 
             + \begin{pmatrix} 1.5 \\ -2 \\ -0.5 \end{pmatrix} f\left(\frac{3\pi}{2}-\xi\right) 
@@ -1063,9 +1065,11 @@ F(x) = \Biggl(
     \biggr) 
 \Biggr) - 6.629453
 \end{aligned}
-\end{equation*}
+\tag{5}
+\label{eq:trans_func_specific}
+\end{equation}
 
-Решение уравнения \eqref{eq:trans_eq} выполнено численно на интервале $(0, \frac{3\pi}{2})$ с точностью $10^{-12}$, которая обеспечивается критериями остановки, принятыми для каждого метода (невязка и/или длина интервала).
+Решение уравнения \eqref{eq:trans_func_specific} выполнено численно на интервале $(0, \frac{3\pi}{2})$ с точностью $10^{-12}$, которая обеспечивается критериями остановки, принятыми для каждого метода (невязка и/или длина интервала).
 Вычисления выполнены в среде \textsc{Julia} и \textsc{Matlab}.
 Ниже приведен график функции \eqref{eq:trans_func} на интервале $(0, \frac{3\pi}{2})$.
 
@@ -1074,24 +1078,29 @@ F(x) = \Biggl(
 \setcounter{figure}{5}
 \begin{figure}[h]
 \centering
-\begin{minipage}{0.87\textwidth}
+\begin{minipage}{0.82\textwidth}
     \centering
     \includegraphics[width=\linewidth]{F_x.png}
     \caption{График функции $F(x)$ (условие переключения)}
 \end{minipage}
 \end{figure}
-
+\vspace{-12pt}
 Данный график построен при помощи библиотеки \texttt{matplotlib} в \texttt{Python} \cite{matplotlib}.
-\vspace{10pt}
 
+\vspace{4pt}
 Ниже приведем код и блок-схему метода MSe с подробным разбором. Реализация остальных методов приведена в приложении (\texttt{numMethods.jl}).
 
 
 
 \vspace{-10pt}
-\begin{lstlisting}[basicstyle=\ttfamily\bfseries\small]
+\begin{lstlisting}[
+    basicstyle=\ttfamily\bfseries\small,
+    aboveskip=0pt,
+    belowskip=0pt
+]
 
 function modified_secant(F::Function, x0::Float64; tol, maxiter)
+    # F - (*@\text{функция}@*), x0 - (*@\text{начальное приближение}@*), tol - (*@\text{требуемая точность}@*), maxiter - (*@\text{предельное число итераций}@*).
     x = x0 # (*@\text{Начальное приближение}@*)
     it = 0 # (*@\text{Счётчик итераций}@*)
     while it < maxiter 
@@ -1195,6 +1204,31 @@ end
 
 
 \newpage
+
+
+
+\noindent\textbf{Применение алгоритма к заданному примеру.}
+
+Для решения рассматриваемого трансцендентного уравнения $F(x) = 0$ 
+(где $F(x)$ задана формулой \eqref{eq:trans_func_specific})
+метод вызывается со следующими параметрами:
+начальное приближение задано как $x_0 = 1.5$, 
+требуемая точность $tol = 10^{-12}$,
+максимальное число итераций $maxiter = 100$. 
+
+Ниже представлен фрагмент кода, демонстрирующий вызов функции
+для конкретных значений:
+
+\begin{lstlisting}[basicstyle=\ttfamily\bfseries\small]
+# (*@\text{Вызов функции поиска корня}@*)
+root, iterations = modified_secant(F, x0, tol, maxiter)
+\end{lstlisting}
+
+В результате выполнения программы для модельной системы алгоритм
+успешно сходится. Искомое значение достигнуто на \textbf{N-й}
+итерации и составляет \textbf{$x = \dots$}. \\
+
+\vspace{-15pt}
 Численные значения, представленные в таблице~\ref{tab:tau_compare}, получены на основе кода из приложения (\texttt{numMethods.jl}).
 
 \vspace{10pt}
@@ -1204,8 +1238,7 @@ end
 \setlength{\tabcolsep}{6pt}
 \renewcommand{\arraystretch}{1.15}
 
-\caption{Сравнение численных методов решения уравнения~\eqref{eq:trans_eq}}
-\label{tab:tau_compare}
+
 
 \rowcolors{1}{gray!15}{white}
 
@@ -1229,6 +1262,10 @@ Steffensen        & 1.570799848924731 & 11  & $3.5221\cdot10^{-6}$ \\
 Analytical value  & $\pi/2 \approx 1.570796$ & -- & -- \\
 \bottomrule
 \end{tabular}
+
+\caption{Сравнение численных методов решения уравнения~\eqref{eq:trans_eq}}
+\label{tab:tau_compare}
+
 \end{table}
 
 Из таблицы видно, что все рассматриваемые методы
@@ -1278,6 +1315,8 @@ x_m=\frac{x_0+x_1}{2}.
     \small Рис. 7 Карта сходимости методов
 \end{minipage}
 \end{figure}
+
+\newpage
 
 Для количественной характеристики эффективности методов была
 построена диаграмма числа выигранных точек (рис.~8).
