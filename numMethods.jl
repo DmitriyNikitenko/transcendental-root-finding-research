@@ -1,6 +1,6 @@
 using LinearAlgebra # Матричные операции
 using QuadGK # Численное интегрирование
-using Printf
+using Printf # Форматированный вывод
 using Roots
 
 # Параметры задачи
