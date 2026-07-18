@@ -57,14 +57,17 @@ mutable struct Result
 end
 
 
-# 1. Bisection
+# Bisection
 function bisection(F::Function, a::Float64, b::Float64; tol=1e-12, maxiter=100)
     fa, fb = F(a), F(b)
     @assert fa * fb < 0 "Bisection: no sign change on the interval"
-    it = 0
+    it = 0 # Счетчик итераций
     while (b - a) / 2 > tol && it < maxiter
+        # Вычисление середины интервала
         m = a + (b - a) / 2 # (a + b) / 2
         fm = F(m)
+
+        # Обновление границ интервала и счетчика итераций
         if fa * fm <= 0
             b, fb = m, fm
         else
@@ -75,16 +78,18 @@ function bisection(F::Function, a::Float64, b::Float64; tol=1e-12, maxiter=100)
     return (a + (b - a) / 2), it
 end
 
-# 2. Trisection
+# Trisection
 function trisection(F::Function, a::Float64, b::Float64; tol=1e-12, maxiter=100)
     fa, fb = F(a), F(b)
     @assert fa * fb < 0 "Trisection: no sign change on the interval"
-    it = 0
+    it = 0 # Счетчик итераций
     while (b - a) > tol && it < maxiter
+        # Вычисление опорных точек
         x1 = a + (b - a) / 3
         x2 = a + 2 * (b - a) / 3
         f1, f2 = F(x1), F(x2)
 
+        # Обновление границ интервала и счетчика итераций
         if fa * f1 <= 0
             b, fb = x1, f1
         elseif f1 * f2 <= 0
@@ -98,18 +103,20 @@ function trisection(F::Function, a::Float64, b::Float64; tol=1e-12, maxiter=100)
     return (a + (b - a) / 2), it
 end
 
-# 3. False Position
+# False Position
 function false_position(F::Function, a::Float64, b::Float64; tol=1e-12, maxiter=100)
     fa, fb = F(a), F(b)
     @assert fa * fb < 0 "False position: no sign change on the interval"
-    it = 0
+    it = 0 # Счетчик итераций
     c = a
     while it < maxiter
-        c = b - fb * (b - a) / (fb - fa)
+        c = b - fb * (b - a) / (fb - fa) # Вычисление новго приближения
         fc = F(c)
+        # Проверка критерия остановки по невязке
         if abs(fc) < tol
             return c, it + 1
         end
+        # Обновление границ интервала и счетчика итераций
         if fa * fc < 0
             b, fb = c, fc
         else
@@ -120,35 +127,40 @@ function false_position(F::Function, a::Float64, b::Float64; tol=1e-12, maxiter=
     return c, it
 end
 
-# 4. Newton
+# Newton
 function newton(F::Function, x0::Float64; tol=1e-12, maxiter=100)
-    x = x0
-    it = 0
+    x = x0 # Начальное приближение
+    it = 0 # Счетчик итераций
     while it < maxiter
         fx = F(x)
+        # Проверка критерия остановки по невязке
         abs(fx) < tol && return x, it
         dfx = dF(F, x)
-        xnew = x - fx / dfx
+        xnew = x - fx / dfx # Вычисление нового приближения
+        # Проверка критерия остановки по приращению аргумента
         if abs(xnew - x) < tol
             return xnew, it + 1
         end
+        # Обновление текущего приближения и счетчика итераций
         x = xnew
         it += 1
     end
     return x, it
 end
 
-# 5. Secant
+# Secant
 function secant(F::Function, x0::Float64, x1::Float64; tol=1e-12, maxiter=100)
     f0, f1 = F(x0), F(x1)
-    it = 0
+    it = 0 # Счетчик итераций
     while it < maxiter
-        denom = f1 - f0
+        denom = f1 - f0 # Разность значений функции
         @assert denom != 0.0 "Secant: zero denominator"
-        x2 = x1 - f1 * (x1 - x0) / denom
+        x2 = x1 - f1 * (x1 - x0) / denom # Вычисление нового приближения
+        # Проверка критериев останова
         if abs(x2 - x1) < tol || abs(F(x2)) < tol
             return x2, it + 1
         end
+        # Обновление текущего приближения и счетчика итераций
         x0, f0 = x1, f1
         x1, f1 = x2, F(x2)
         it += 1
@@ -156,27 +168,30 @@ function secant(F::Function, x0::Float64, x1::Float64; tol=1e-12, maxiter=100)
     return x1, it
 end
 
-# 6. Modified Secant
+# Modified Secant
 function modified_secant(F::Function, x0::Float64; tol=1e-12, maxiter=100)
-    x = x0
-    it = 0
+    x = x0 # Начальное приближение
+    it = 0 # Счетчик итераций 
     while it < maxiter
-        fx = F(x)
+        fx = F(x) 
+        # Проверка критерия остановки по невязке 
         abs(fx) < tol && return x, it
         d = fx
-        denom = F(x + d) - fx
+        denom = F(x + d) - fx # Разность значений функции
         @assert denom != 0.0 "Modified Secant: zero denominator"
-        xnew = x - d * fx / denom
+        xnew = x - d * fx / denom # Вычисление нового приближения
+        # Проверка критерия остановки по приращению аргумента
         if abs(xnew - x) < tol
             return xnew, it + 1
         end
+        # Обновление текущего приближения и счетчика итераций
         x = xnew
         it += 1
     end
     return x, it
 end
 
-# 7. FP-MSe 
+# FP-MSe 
 function fp_mse(F::Function, a::Float64, b::Float64; drel=1e-6, tol=1e-12, maxiter=100)
     fa, fb = F(a), F(b)
     @assert fa * fb < 0 "FP-MSe: no sign change on the interval"
@@ -219,33 +234,38 @@ function fp_mse(F::Function, a::Float64, b::Float64; drel=1e-6, tol=1e-12, maxit
     return (a + b) / 2, maxiter
 end
 
-# 8. Halley
+# Halley
 function halley(F::Function, x0::Float64; tol=1e-12, maxiter=100)
-    x = x0
-    it = 0
+    x = x0 # Начальное приближение
+    it = 0 # Счетчик итераций
     while it < maxiter
         fx = F(x)
+        # Проверка критерия остановки по невязке
         abs(fx) < tol && return x, it
+        # Численное вычисчислление 1-й и 2-й производных
         dfx = dF(F, x)
         ddfx = ddF(F, x)
         denom = 2 * dfx^2 - fx * ddfx
         @assert denom != 0.0 "Halley: zero denominator"
-        xnew = x - (2 * fx * dfx) / denom
+        xnew = x - (2 * fx * dfx) / denom # Вычисление нового приближения
+        # Проверка критерия остановки по приращению аргумента
         if abs(xnew - x) < tol
             return xnew, it + 1
         end
+        # Обновление текущего приближения и счетчика итераций
         x = xnew
         it += 1
     end
     return x, it
 end
 
-# 9. Ridders
+# Ridders
 function ridders(F::Function, a::Float64, b::Float64; tol=1e-12, maxiter=100)
     fa, fb = F(a), F(b)
     @assert fa * fb < 0 "Ridders: no sign change on the interval"
-    it = 0
+    it = 0 # Счетчик итераций
     while it < maxiter
+        # Вычисление необходимых для нового приближения величин
         m = a + (b - a) / 2 # (a + b) / 2
         fm = F(m)
         s2 = fm^2 - fa * fb
@@ -253,13 +273,15 @@ function ridders(F::Function, a::Float64, b::Float64; tol=1e-12, maxiter=100)
             return m, it + 1
         end
         s = sqrt(s2)
-        x = m + (m - a) * sign(fa - fb) * fm / s
+        x = m + (m - a) * sign(fa - fb) * fm / s # Вычисление нового приближения
         fx = F(x)
 
+        # Проверка критериев останова
         if abs(fx) < tol || abs(b - a) < tol
             return x, it + 1
         end
 
+        # Выбор лучшего нового приближения
         if fm * fx < 0
             a, fa = m, fm
             b, fb = x, fx
@@ -274,6 +296,7 @@ function ridders(F::Function, a::Float64, b::Float64; tol=1e-12, maxiter=100)
     return (a + (b - a) / 2), it
 end
 
+# VW-Brent
 function brent(F::Function, a::Float64, b::Float64; tol=1e-12, maxiter=100)
     fa, fb = F(a), F(b)
     @assert fa * fb < 0 "Brent: no sign change on the interval"
@@ -353,26 +376,29 @@ function brent(F::Function, a::Float64, b::Float64; tol=1e-12, maxiter=100)
     return b, maxiter
 end
 
-# 11. Steffensen
+# Steffensen
 function steffensen(F::Function, x0::Float64; tol=1e-12, maxiter=100)
-    x = x0
-    it = 0
+    x = x0 # Начальное приближение
+    it = 0 # Счетчик итераций
     while it < maxiter
         fx = F(x)
+        # Проверка критерия остановки по невязке
         abs(fx) < tol && return x, it
         denom = F(x + fx) - fx
         @assert denom != 0.0 "Steffensen: zero denominator"
         xnew = x - fx^2 / denom
+        # Проверка критерия остановки по приращению аргумента
         if abs(xnew - x) < tol
             return xnew, it + 1
         end
+        # Обновление текущего приближения и счетчика итераций
         x = xnew
         it += 1
     end
     return x, it
 end
 
-# 12. Modified Steffensen
+# Modified Steffensen
 function modified_steffensen(F::Function, x0::Float64; tol=1e-12, maxiter=100, gamma0=1.0)
     x = x0
     gamma = gamma0                                                                                                                                                                                                                                                                                                                                                                                                                                                          
@@ -424,6 +450,7 @@ function modified_steffensen(F::Function, x0::Float64; tol=1e-12, maxiter=100, g
         fx_prev = fx
         fw_prev = fw
 
+        # Обновление текущего приближения и счетчика итераций
         x = xnew
         it += 1
     end
